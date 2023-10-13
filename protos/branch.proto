@@ -1,37 +1,31 @@
 syntax = "proto3";
 
 service Branch {
-  rpc Query (QueryRequest) returns (Balance) {}
-
-  rpc Deposit (TransactionRequest) returns (TransactionResponse) {}
-
-  rpc Withdraw (TransactionRequest) returns (TransactionResponse) {}
-
-  rpc Propagate_Withdraw (Balance) returns (PropagateResponse) {}
-
-  rpc Propagate_Deposit (Balance) returns (PropagateResponse) {}
-  
+  rpc MsgDelivery (Request) returns (Response) {}
 }
 
-message QueryRequest {
-  int32 customer_id = 1;
+message Request {
+  Interface interface = 1;
+  int32 id = 2;
+  int32 money = 3;
 }
 
-message TransactionRequest {
-  int32 customer_id = 1;
-  int32 amount = 2;
+enum Interface {
+  Query = 0;
+  Withdraw = 1;
+  Deposit = 2;
+  Propagate_Withdraw = 3;
+  Propagate_Deposit = 4;
 }
 
-message TransactionResponse {
-  string interface = 1;
-  string result = 2;
+message Response {
+  Interface interface = 1;
+  int32 id = 2;
+  int32 money = 3;
+  ResponseStatus status = 4;
 }
 
-message PropagateResponse {
-  string message = 1;
-}
-
-message Balance {
-  int32 customer_id = 1;
-  int32 money = 2;
+enum ResponseStatus {
+  Success = 0;
+  Failure = 1;
 }

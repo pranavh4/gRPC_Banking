@@ -3,44 +3,51 @@ import json
 import grpc
 from generated.branch_pb2_grpc import BranchStub
 from generated.branch_pb2 import *
-import time
+from utils import load_config_file
+
+config = load_config_file()
+start_port = config["start_port"]
 
 
 class Customer:
-    def __init__(self, id, port):
+    def __init__(self, id, events):
         # unique ID of the Customer
         self.id = id
         # events from the input
-        self.events = list()
+        self.events = events
         # a list of received messages used for debugging purpose
-        self.recv_msg = list()
+        self.recv_msg: list[Response] = list()
         # pointer for the stub
-        channel = grpc.insecure_channel(f'localhost:{port}')
-        self.stub = BranchStub(channel)
+        self.stub = self.create_stub()
 
-    # TODO: students are expected to send out the events to the Bank
-    def execute_events(self, events):
-        self.events.extend(events)
+    def create_stub(self) -> BranchStub:
+        channel = grpc.insecure_channel(f'localhost:{start_port + self.id}')
+        return BranchStub(channel)
 
-        for event in events:
+    def execute_events(self):
+        for event in self.events:
             if event["interface"] == "query":
-                self.recv_msg.append(self.stub.Query(QueryRequest(customer_id=self.id)))
+                request = Request(interface=Interface.Query, id=self.id)
             elif event["interface"] == "deposit":
-                self.recv_msg.append(self.stub.Deposit(TransactionRequest(customer_id=self.id, amount=event["money"])))
+                request = Request(interface=Interface.Deposit, id=self.id, money=event["money"])
             elif event["interface"] == "withdraw":
-                self.recv_msg.append(self.stub.Withdraw(TransactionRequest(customer_id=self.id, amount=event["money"])))
+                request = Request(interface=Interface.Withdraw, id=self.id, money=event["money"])
             else:
                 raise Exception("Invalid Event Type")
 
-            # time.sleep(3)
+            self.recv_msg.append(self.stub.MsgDelivery(request))
+
+        self.print_events()
 
     def print_events(self):
         print_dict = {"id": self.id, "recv": []}
         for msg in self.recv_msg:
-            if type(msg) is TransactionResponse:
-                print_dict["recv"].append({"interface": msg.interface, "result": msg.result})
-            elif type(msg) is Balance:
+            if msg.interface == Interface.Query:
                 print_dict["recv"].append({"interface": "query", "balance": msg.money})
+            else:
+                print_dict["recv"].append({
+                    "interface": Interface.Name(msg.interface).lower(),
+                    "result": ResponseStatus.Name(msg.status).lower()
+                })
 
         print(json.dumps(print_dict))
-

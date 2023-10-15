@@ -23,6 +23,16 @@ class Branch(branch_pb2_grpc.BranchServicer):
         self.recv_msg: list[branch_pb2.Response] = list()
 
     def MsgDelivery(self, request: branch_pb2.Request, context):
+        """
+        Implement the various Branch to Branch and Branch to Customer Interfaces as listed below: \n
+        - Branch.Query: Return the current balance
+        - Branch.Withdraw: Withdraw some amount from the available balance and return status
+        - Branch.Deposit: Deposit some amount and return the status
+        - Branch.Propagate_Withdraw: Propagate the updated balance after withdrawal to all other branches
+        - Branch.Propagate_Deposit: Propagate the updated balance after deposit to all other branches
+        """
+
+        # Implementation of Branch.Query interface
         if request.interface == branch_pb2.Interface.Query:
             return branch_pb2.Response(
                 interface=request.interface,
@@ -31,6 +41,7 @@ class Branch(branch_pb2_grpc.BranchServicer):
                 status=branch_pb2.ResponseStatus.Success
             )
 
+        # Implementation of Branch.Withdraw interface
         elif request.interface == branch_pb2.Interface.Withdraw:
             self.balance -= request.money
 
@@ -42,6 +53,7 @@ class Branch(branch_pb2_grpc.BranchServicer):
 
             return branch_pb2.Response(interface=request.interface, status=response_status)
 
+        # Implementation of Branch.Deposit interface
         elif request.interface == branch_pb2.Interface.Deposit:
             self.balance += request.money
             # Broadcast the new balance to other branches
@@ -52,6 +64,7 @@ class Branch(branch_pb2_grpc.BranchServicer):
 
             return branch_pb2.Response(interface=request.interface, status=response_status)
 
+        # Implementation of Branch.Propagate_Withdraw interface
         elif request.interface == branch_pb2.Interface.Propagate_Withdraw:
             self.balance = request.money
             return branch_pb2.Response(
@@ -59,6 +72,7 @@ class Branch(branch_pb2_grpc.BranchServicer):
                 status=branch_pb2.ResponseStatus.Success
             )
 
+        # Implementation of Branch.Propagate_Deposit interface
         elif request.interface == branch_pb2.Interface.Propagate_Deposit:
             self.balance = request.money
             return branch_pb2.Response(
@@ -71,6 +85,11 @@ class Branch(branch_pb2_grpc.BranchServicer):
             return branch_pb2.Response(status=branch_pb2.ResponseStatus.Failure)
 
     def create_branch_stubs(self) -> list[branch_pb2_grpc.BranchStub]:
+        """
+        Create a list of branch stubs that can be used to propagate
+        the updated balance to all branches after deposits/withdrawals
+        """
+
         branch_stubs = []
 
         for branch in self.branches:
@@ -84,6 +103,11 @@ class Branch(branch_pb2_grpc.BranchServicer):
         return branch_stubs
 
     def broadcast(self, interface: branch_pb2.Interface) -> bool:
+        """
+        Broadcast the balance to all the other branches
+        :param interface: Propagate_Withdraw or Propagate_Deposit
+        """
+
         # Instead of broadcasting the deposit/withdraw amount, we broadcast the new balance so that it is idempotent
         prop_request = branch_pb2.Request(interface=interface, id=self.id, money=self.balance)
 
@@ -98,6 +122,10 @@ class Branch(branch_pb2_grpc.BranchServicer):
         return True
 
     def serve(self):
+        """
+        Create and return a grpc_server for this branch object
+        """
+
         port = start_port + self.id
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
         branch_pb2_grpc.add_BranchServicer_to_server(self, server)

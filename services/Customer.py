@@ -21,10 +21,18 @@ class Customer:
         self.stub = self.create_stub()
 
     def create_stub(self) -> BranchStub:
+        """
+        Create a BranchStub used to communicate with the branch server for query, deposit, withdrawal
+        """
+
         channel = grpc.insecure_channel(f'localhost:{start_port + self.id}')
         return BranchStub(channel)
 
     def execute_events(self):
+        """
+        Execute the events for this customer object and print the results
+        """
+
         for event in self.events:
             if event["interface"] == "query":
                 request = Request(interface=Interface.Query, id=self.id)
@@ -40,6 +48,10 @@ class Customer:
         self.print_events()
 
     def print_events(self):
+        """
+        Print the result of the events in the required format
+        """
+
         print_dict = {"id": self.id, "recv": []}
         for msg in self.recv_msg:
             if msg.interface == Interface.Query:

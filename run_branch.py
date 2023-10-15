@@ -14,10 +14,12 @@ start_port = config["start_port"]
 branch_events: list[dict] = list(filter(lambda x: x["type"] == "branch", input_json))
 branch_ids = [start_port + branch_event["id"] for branch_event in branch_events]
 
+# Start servers for each branch mentioned in the input json
 servers = []
 for branch_event in branch_events:
     branch = Branch(branch_event["id"], branch_event["balance"], branch_ids)
     servers.append(branch.serve())
 
+# We need to block until the servers are terminated so that this script does not exit immediately
 for server in servers:
     server.wait_for_termination()

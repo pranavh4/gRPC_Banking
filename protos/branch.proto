@@ -5,8 +5,8 @@ service Branch {
 }
 
 message Request {
-  Interface interface = 1;
-  int32 id = 2;
+  Interface interface = 1; //The type of the request
+  int32 id = 2; //Represents the Id of the Customer or Branch making the request
   int32 money = 3;
 }
 
@@ -22,7 +22,7 @@ message Response {
   Interface interface = 1;
   int32 id = 2;
   int32 money = 3;
-  ResponseStatus status = 4;
+  ResponseStatus status = 4; // Success or Failure
 }
 
 enum ResponseStatus {

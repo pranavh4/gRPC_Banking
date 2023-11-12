@@ -1,13 +1,16 @@
 syntax = "proto3";
 
 service Branch {
-  rpc MsgDelivery (Request) returns (Response) {}
+  rpc MsgDelivery (Request) returns (Response) {} //Endpoint to handle all customer/branch requests
+  rpc GetEvents (Empty) returns (EventList) {} //Endpoint to get the list of logical clock events stored in the branch
 }
 
 message Request {
   Interface interface = 1; //The type of the request
   int32 id = 2; //Represents the Id of the Customer or Branch making the request
   int32 money = 3;
+  int32 logical_clock = 4; //The logical clock value for the event
+  int32 customer_request_id = 5;
 }
 
 enum Interface {
@@ -28,4 +31,21 @@ message Response {
 enum ResponseStatus {
   Success = 0;
   Failure = 1;
+}
+
+message Empty {
+
+}
+
+message EventList {
+  int32 id = 1;
+  string type = 2;
+  repeated Event events = 3;
+}
+
+message Event {
+  int32 customer_request_id = 1;
+  int32 logical_clock = 2;
+  Interface interface = 3;
+  string comment = 4;
 }

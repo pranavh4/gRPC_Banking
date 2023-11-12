@@ -10,15 +10,19 @@ start_port = config["start_port"]
 
 
 class Customer:
-    def __init__(self, id, events):
+    def __init__(self, id, customer_requests):
         # unique ID of the Customer
         self.id = id
-        # events from the input
-        self.events = events
+        # customer requests from the input
+        self.customer_requests = customer_requests
         # a list of received messages used for debugging purpose
         self.recv_msg: list[Response] = list()
         # pointer for the stub
         self.stub = self.create_stub()
+        # counter for the logical clock
+        self.logical_clock = 0
+        # list of events on the branch along with clock values
+        self.events: list[Event] = list()
 
     def create_stub(self) -> BranchStub:
         """
@@ -28,38 +32,63 @@ class Customer:
         channel = grpc.insecure_channel(f'localhost:{start_port + self.id}')
         return BranchStub(channel)
 
-    def execute_events(self):
+    def execute_customer_requests(self):
         """
-        Execute the events for this customer object and print the results
+        Execute the customer requests for this customer object and print the results
         """
 
-        for event in self.events:
-            if event["interface"] == "query":
-                request = Request(interface=Interface.Query, id=self.id)
-            elif event["interface"] == "deposit":
-                request = Request(interface=Interface.Deposit, id=self.id, money=event["money"])
-            elif event["interface"] == "withdraw":
-                request = Request(interface=Interface.Withdraw, id=self.id, money=event["money"])
+        for customer_request in self.customer_requests:
+            interface: Interface
+            # Increment clock for send event
+            self.logical_clock += 1
+
+            if customer_request["interface"] == "query":
+                interface = Interface.Query
+                request = Request(
+                    interface=interface,
+                    id=self.id,
+                    customer_request_id=customer_request["customer-request-id"],
+                    logical_clock=self.logical_clock
+                )
+            elif customer_request["interface"] == "deposit":
+                interface = Interface.Deposit
+                request = Request(
+                    interface=interface,
+                    id=self.id,
+                    money=customer_request["money"],
+                    customer_request_id=customer_request["customer-request-id"],
+                    logical_clock=self.logical_clock
+                )
+            elif customer_request["interface"] == "withdraw":
+                interface = Interface.Withdraw
+                request = Request(
+                    interface=interface,
+                    id=self.id,
+                    money=customer_request["money"],
+                    customer_request_id=customer_request["customer-request-id"],
+                    logical_clock=self.logical_clock
+                )
             else:
-                raise Exception("Invalid Event Type")
+                raise Exception("Invalid Request Type")
 
             self.recv_msg.append(self.stub.MsgDelivery(request))
+            self.events.append(Event(
+                customer_request_id=customer_request["customer-request-id"],
+                logical_clock=self.logical_clock,
+                interface=interface,
+                comment=f"event_sent from customer {self.id}"
+            ))
 
-        self.print_events()
-
-    def print_events(self):
+    def get_customer_events(self) -> EventList:
         """
-        Print the result of the events in the required format
+        Get the customer events that incremented the logical clock
         """
 
-        print_dict = {"id": self.id, "recv": []}
-        for msg in self.recv_msg:
-            if msg.interface == Interface.Query:
-                print_dict["recv"].append({"interface": "query", "balance": msg.money})
-            else:
-                print_dict["recv"].append({
-                    "interface": Interface.Name(msg.interface).lower(),
-                    "result": ResponseStatus.Name(msg.status).lower()
-                })
+        return EventList(id=self.id, type="customer", events=self.events)
 
-        print(json.dumps(print_dict))
+    def get_branch_events(self) -> EventList:
+        """
+        Get all the branch events that incremented the logical clock in the branch associated with the customer
+        """
+
+        return self.stub.GetEvents(Empty())

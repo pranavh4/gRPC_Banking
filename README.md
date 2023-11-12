@@ -27,16 +27,15 @@ $ pip install -r requirements.txt
 - Open two terminals and activate the python env if you have it
 - Run the script to start the branch servers using the following command
 ```shell
-$ python run_branch.py -i ./test/input.json
+$ python run_branch.py -i ./test/input_10.json
 ```
 - In the other terminal, start the customer clients using the following command
 ```shell
-$ python run_customer.py -i ./test/input.json
+$ python run_customer.py -i ./test/input_10.json -o /path/to/output/folder
 ```
-- The above command will run the customer events and print out the responses. If you need the output in a file, you can just pipe them to a file
-```shell
-$ python run_customer.py -i ./test/input.json > /path/to/output/file
-```
+
+- The above command will run the customer events and store the outputs in 3 files `output1.json`, `output2.json` and `output3.json` in the mentioned output folder.
+- **IMPORTANT:** If you want to rerun the programs, ensure that you re-run both the branch and customer scripts. If you re-run only `run_customer.py`, the output from the branch processes will contain results from the previous execution as well. 
 ## 4. Configuration Options
 - The branch servers are all hosted on separate ports, starting from a single start_port and incrementing by one for each server. 
 - The start_port value can be set in the [config file](resources/config.json)

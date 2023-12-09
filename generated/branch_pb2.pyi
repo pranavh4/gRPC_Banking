@@ -26,23 +26,27 @@ Success: ResponseStatus
 Failure: ResponseStatus
 
 class Request(_message.Message):
-    __slots__ = ["interface", "id", "money"]
+    __slots__ = ["interface", "id", "money", "commit_id"]
     INTERFACE_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     MONEY_FIELD_NUMBER: _ClassVar[int]
+    COMMIT_ID_FIELD_NUMBER: _ClassVar[int]
     interface: Interface
     id: int
     money: int
-    def __init__(self, interface: _Optional[_Union[Interface, str]] = ..., id: _Optional[int] = ..., money: _Optional[int] = ...) -> None: ...
+    commit_id: int
+    def __init__(self, interface: _Optional[_Union[Interface, str]] = ..., id: _Optional[int] = ..., money: _Optional[int] = ..., commit_id: _Optional[int] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ["interface", "id", "money", "status"]
+    __slots__ = ["interface", "id", "money", "commit_id", "status"]
     INTERFACE_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     MONEY_FIELD_NUMBER: _ClassVar[int]
+    COMMIT_ID_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     interface: Interface
     id: int
     money: int
+    commit_id: int
     status: ResponseStatus
-    def __init__(self, interface: _Optional[_Union[Interface, str]] = ..., id: _Optional[int] = ..., money: _Optional[int] = ..., status: _Optional[_Union[ResponseStatus, str]] = ...) -> None: ...
+    def __init__(self, interface: _Optional[_Union[Interface, str]] = ..., id: _Optional[int] = ..., money: _Optional[int] = ..., commit_id: _Optional[int] = ..., status: _Optional[_Union[ResponseStatus, str]] = ...) -> None: ...

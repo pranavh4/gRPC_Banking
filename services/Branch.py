@@ -1,3 +1,5 @@
+import threading
+import time
 from concurrent import futures
 
 import grpc
@@ -21,6 +23,16 @@ class Branch(branch_pb2_grpc.BranchServicer):
         self.branch_stubs: list[branch_pb2_grpc.BranchStub] = self.create_branch_stubs()
         # a list of received messages used for debugging purpose
         self.recv_msg: list[branch_pb2.Response] = list()
+        # the current commit id, indicating how caught up the branch is
+        self.commit_id: int = 0
+        # Callback to handle async result of propagate events
+        self.propagate_callback = PropagateCallback(self)
+        # lock to be acquired for critical sections
+        self.lock: threading.Lock = threading.Lock()
+        # List storing the outstanding updates
+        self.outstanding_updates: list[branch_pb2.Request] = list()
+        # Run thread in background that periodically applies any outstanding updates
+        threading.Thread(daemon=True, target=self.apply_outstanding_updates).start()
 
     def MsgDelivery(self, request: branch_pb2.Request, context):
         """
@@ -34,55 +46,79 @@ class Branch(branch_pb2_grpc.BranchServicer):
 
         # Implementation of Branch.Query interface
         if request.interface == branch_pb2.Interface.Query:
+            # Wait till branch has received all updates till commit_id
+            self.await_update(request.commit_id)
+
             return branch_pb2.Response(
                 interface=request.interface,
                 id=self.id,
                 money=self.balance,
+                commit_id=self.commit_id,
                 status=branch_pb2.ResponseStatus.Success
             )
 
         # Implementation of Branch.Withdraw interface
         elif request.interface == branch_pb2.Interface.Withdraw:
+            # Wait till branch has received all updates till commit_id
+            self.await_update(request.commit_id)
+
+            self.lock.acquire(blocking=True)
             self.balance -= request.money
+            self.commit_id += 1
+            self.lock.release()
 
             # Broadcast the new balance to other branches
-            if self.broadcast(branch_pb2.Interface.Propagate_Withdraw):
-                response_status = branch_pb2.ResponseStatus.Success
-            else:
-                response_status = branch_pb2.ResponseStatus.Failure
+            self.broadcast(branch_pb2.Interface.Propagate_Withdraw)
+            response_status = branch_pb2.ResponseStatus.Success
 
-            return branch_pb2.Response(interface=request.interface, status=response_status)
+            return branch_pb2.Response(
+                id=self.id,
+                interface=request.interface,
+                commit_id=self.commit_id,
+                status=response_status
+            )
 
         # Implementation of Branch.Deposit interface
         elif request.interface == branch_pb2.Interface.Deposit:
+            # Wait till branch has received all updates till commit_id
+            self.await_update(request.commit_id)
+
+            self.lock.acquire(blocking=True)
             self.balance += request.money
+            self.commit_id += 1
+            self.lock.release()
+
             # Broadcast the new balance to other branches
-            if self.broadcast(branch_pb2.Interface.Propagate_Deposit):
-                response_status = branch_pb2.ResponseStatus.Success
-            else:
-                response_status = branch_pb2.ResponseStatus.Failure
+            self.broadcast(branch_pb2.Interface.Propagate_Deposit)
+            response_status = branch_pb2.ResponseStatus.Success
 
-            return branch_pb2.Response(interface=request.interface, status=response_status)
-
-        # Implementation of Branch.Propagate_Withdraw interface
-        elif request.interface == branch_pb2.Interface.Propagate_Withdraw:
-            self.balance = request.money
             return branch_pb2.Response(
-                interface=branch_pb2.Interface.Propagate_Withdraw,
-                status=branch_pb2.ResponseStatus.Success
+                id=self.id,
+                interface=request.interface,
+                commit_id=self.commit_id,
+                status=response_status
             )
 
-        # Implementation of Branch.Propagate_Deposit interface
-        elif request.interface == branch_pb2.Interface.Propagate_Deposit:
-            self.balance = request.money
+        # Implementation of Branch.Propagate_Withdraw and Branch.Propagate_Deposit interface
+        elif (request.interface == branch_pb2.Interface.Propagate_Withdraw or
+              request.interface == branch_pb2.Interface.Propagate_Deposit):
+            insert_idx = 0
+            for i, update in enumerate(self.outstanding_updates):
+                if update.commit_id > request.commit_id:
+                    break
+                insert_idx += 1
+
+            self.outstanding_updates.insert(insert_idx, request)
+
             return branch_pb2.Response(
-                interface=branch_pb2.Interface.Propagate_Deposit,
+                id=self.id,
+                interface=branch_pb2.Interface.Propagate_Withdraw,
                 status=branch_pb2.ResponseStatus.Success
             )
 
         else:
             print(f"Received message with invalid interface: {request}")
-            return branch_pb2.Response(status=branch_pb2.ResponseStatus.Failure)
+            return branch_pb2.Response(id=self.id, status=branch_pb2.ResponseStatus.Failure)
 
     def create_branch_stubs(self) -> list[branch_pb2_grpc.BranchStub]:
         """
@@ -102,24 +138,60 @@ class Branch(branch_pb2_grpc.BranchServicer):
 
         return branch_stubs
 
-    def broadcast(self, interface: branch_pb2.Interface) -> bool:
+    def broadcast(self, interface: branch_pb2.Interface):
         """
         Broadcast the balance to all the other branches
         :param interface: Propagate_Withdraw or Propagate_Deposit
         """
 
         # Instead of broadcasting the deposit/withdraw amount, we broadcast the new balance so that it is idempotent
-        prop_request = branch_pb2.Request(interface=interface, id=self.id, money=self.balance)
+        prop_request = branch_pb2.Request(
+            interface=interface,
+            id=self.id,
+            money=self.balance,
+            commit_id=self.commit_id
+        )
 
         for branch_stub in self.branch_stubs:
-            response: branch_pb2.Response = branch_stub.MsgDelivery(prop_request)
-            self.recv_msg.append(response)
+            future: grpc.Future = branch_stub.MsgDelivery.future(prop_request)
+            future.add_done_callback(self.propagate_callback)
 
-            if response.status == branch_pb2.ResponseStatus.Failure:
-                print(f"Failure when {branch_pb2.Interface.Name(interface)} to other branches")
-                return False
+    def await_update(self, commit_id: int):
+        """
+        Block till the branch has caught up till commit_id
+        """
 
-        return True
+        if self.commit_id >= commit_id:
+            return
+
+        print(f"Branch {self.id} waiting to get all updates upto commit id: {commit_id}")
+
+        while self.commit_id < commit_id:
+            time.sleep(0.5)
+
+        print(f"Branch {self.id} got all updates upto commit id: {commit_id}")
+
+    #
+    def apply_outstanding_updates(self):
+        """
+        Check if any outstanding updates are present and apply them to this branch
+        """
+
+        while True:
+            time.sleep(0.1)
+            self.lock.acquire(blocking=True)
+            idx = 0
+
+            for update in self.outstanding_updates:
+                if update.commit_id != self.commit_id + 1:
+                    break
+
+                self.balance = update.money
+                self.commit_id = update.commit_id
+                idx += 1
+
+            self.outstanding_updates = self.outstanding_updates[idx:]
+            self.lock.release()
 
     def serve(self):
         """
@@ -133,3 +205,21 @@ class Branch(branch_pb2_grpc.BranchServicer):
         server.start()
         print(f"BRANCH {self.id} started. Listening on port {port}")
         return server
+
+
+class PropagateCallback:
+    def __init__(self, branch: Branch):
+        self.branch = branch
+        # To prevent multiple callbacks from updating recv_msg concurrently
+        self.lock = threading.Lock()
+
+    def __call__(self, *args, **kwargs):
+        future: grpc.Future = args[0]
+        result = future.result()
+
+        if result.status == branch_pb2.ResponseStatus.Failure:
+            print(f"Failure when propagating to other branches")
+
+        self.lock.acquire(blocking=True)
+        self.branch.recv_msg.append(result)
+        self.lock.release()

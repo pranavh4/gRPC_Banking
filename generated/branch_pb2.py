@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x62ranch.proto\"C\n\x07Request\x12\x1d\n\tinterface\x18\x01 \x01(\x0e\x32\n.Interface\x12\n\n\x02id\x18\x02 \x01(\x05\x12\r\n\x05money\x18\x03 \x01(\x05\"e\n\x08Response\x12\x1d\n\tinterface\x18\x01 \x01(\x0e\x32\n.Interface\x12\n\n\x02id\x18\x02 \x01(\x05\x12\r\n\x05money\x18\x03 \x01(\x05\x12\x1f\n\x06status\x18\x04 \x01(\x0e\x32\x0f.ResponseStatus*`\n\tInterface\x12\t\n\x05Query\x10\x00\x12\x0c\n\x08Withdraw\x10\x01\x12\x0b\n\x07\x44\x65posit\x10\x02\x12\x16\n\x12Propagate_Withdraw\x10\x03\x12\x15\n\x11Propagate_Deposit\x10\x04**\n\x0eResponseStatus\x12\x0b\n\x07Success\x10\x00\x12\x0b\n\x07\x46\x61ilure\x10\x01\x32.\n\x06\x42ranch\x12$\n\x0bMsgDelivery\x12\x08.Request\x1a\t.Response\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x62ranch.proto\"V\n\x07Request\x12\x1d\n\tinterface\x18\x01 \x01(\x0e\x32\n.Interface\x12\n\n\x02id\x18\x02 \x01(\x05\x12\r\n\x05money\x18\x03 \x01(\x05\x12\x11\n\tcommit_id\x18\x04 \x01(\x05\"x\n\x08Response\x12\x1d\n\tinterface\x18\x01 \x01(\x0e\x32\n.Interface\x12\n\n\x02id\x18\x02 \x01(\x05\x12\r\n\x05money\x18\x03 \x01(\x05\x12\x11\n\tcommit_id\x18\x04 \x01(\x05\x12\x1f\n\x06status\x18\x05 \x01(\x0e\x32\x0f.ResponseStatus*`\n\tInterface\x12\t\n\x05Query\x10\x00\x12\x0c\n\x08Withdraw\x10\x01\x12\x0b\n\x07\x44\x65posit\x10\x02\x12\x16\n\x12Propagate_Withdraw\x10\x03\x12\x15\n\x11Propagate_Deposit\x10\x04**\n\x0eResponseStatus\x12\x0b\n\x07Success\x10\x00\x12\x0b\n\x07\x46\x61ilure\x10\x01\x32.\n\x06\x42ranch\x12$\n\x0bMsgDelivery\x12\x08.Request\x1a\t.Response\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -21,14 +21,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'branch_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _globals['_INTERFACE']._serialized_start=188
-  _globals['_INTERFACE']._serialized_end=284
-  _globals['_RESPONSESTATUS']._serialized_start=286
-  _globals['_RESPONSESTATUS']._serialized_end=328
+  _globals['_INTERFACE']._serialized_start=226
+  _globals['_INTERFACE']._serialized_end=322
+  _globals['_RESPONSESTATUS']._serialized_start=324
+  _globals['_RESPONSESTATUS']._serialized_end=366
   _globals['_REQUEST']._serialized_start=16
-  _globals['_REQUEST']._serialized_end=83
-  _globals['_RESPONSE']._serialized_start=85
-  _globals['_RESPONSE']._serialized_end=186
-  _globals['_BRANCH']._serialized_start=330
-  _globals['_BRANCH']._serialized_end=376
+  _globals['_REQUEST']._serialized_end=102
+  _globals['_RESPONSE']._serialized_start=104
+  _globals['_RESPONSE']._serialized_end=224
+  _globals['_BRANCH']._serialized_start=368
+  _globals['_BRANCH']._serialized_end=414
 # @@protoc_insertion_point(module_scope)

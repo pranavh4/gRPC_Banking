@@ -8,6 +8,7 @@ message Request {
   Interface interface = 1; //The type of the request
   int32 id = 2; //Represents the Id of the Customer or Branch making the request
   int32 money = 3;
+  int32 commit_id = 4;
 }
 
 enum Interface {
@@ -22,7 +23,8 @@ message Response {
   Interface interface = 1;
   int32 id = 2;
   int32 money = 3;
-  ResponseStatus status = 4; // Success or Failure
+  int32 commit_id = 4;
+  ResponseStatus status = 5; // Success or Failure
 }
 
 enum ResponseStatus {

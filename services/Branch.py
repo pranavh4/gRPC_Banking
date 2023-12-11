@@ -183,6 +183,8 @@ class Branch(branch_pb2_grpc.BranchServicer):
             idx = 0
 
             for update in self.outstanding_updates:
+                # Commit_ids are consecutive. If we are missing a particular id, it implies
+                # that the message has not arrived yet. Thus, we only apply the updates till here
                 if update.commit_id != self.commit_id + 1:
                     break
 
@@ -190,6 +192,7 @@ class Branch(branch_pb2_grpc.BranchServicer):
                 self.commit_id = update.commit_id
                 idx += 1
 
+            # Clear the applied updates from the outstanding updates list
             self.outstanding_updates = self.outstanding_updates[idx:]
             self.lock.release()
 

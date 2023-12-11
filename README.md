@@ -19,7 +19,7 @@ $ git checkout submission-3
 # install virtual env if you haven't
 $ python -m pip install --user virtualenv
 $ python -m venv ./.venv
-$ source ./venv/bin/activate
+$ source ./.venv/bin/activate
 ```
 - Install the required python packages using the provided requirements.txt. This will install the grpc libraries required for running the code.
 ```shell
